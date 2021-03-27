@@ -1,10 +1,5 @@
 #include "blake3_impl.h"
 #include <string.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-
-#define MAP_SIZE 0x1000
-volatile unsigned *uiod;
 
 void blake3_compress_in_place_uio(uint32_t cv[8],
                                        const uint8_t block[BLAKE3_BLOCK_LEN],
@@ -88,10 +83,6 @@ void blake3_hash_many_uio(const uint8_t *const *inputs, size_t num_inputs,
                                uint64_t counter, bool increment_counter,
                                uint8_t flags, uint8_t flags_start,
                                uint8_t flags_end, uint8_t *out) {
-  // Open and map UIO device
-  int fd = open("/dev/uiod0", O_RDWR);
-  uiod = (volatile unsigned *) mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-
   while (num_inputs > 0) {
     hash_one_uio(inputs[0], blocks, key, counter, flags, flags_start,
                       flags_end, out);
@@ -102,6 +93,4 @@ void blake3_hash_many_uio(const uint8_t *const *inputs, size_t num_inputs,
     num_inputs -= 1;
     out = &out[BLAKE3_OUT_LEN];
   }
-  
-  munmap((void*)uiod, MAP_SIZE);
 }

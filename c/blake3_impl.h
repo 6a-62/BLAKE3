@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include "blake3.h"
 
@@ -51,6 +53,26 @@ enum blake3_flags {
 #define MAX_SIMD_DEGREE 4
 #else
 #define MAX_SIMD_DEGREE 1
+#endif
+
+#if defined(BLAKE3_USE_UIO)
+#define MAP_SIZE 0x1000
+volatile unsigned *uiod;
+INLINE void uio_open() {
+  // Open and map UIO device
+  int fd = open("/dev/uiod0", O_RDWR);
+  uiod = (volatile unsigned *) mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+}
+
+INLINE void uio_close() {
+  munmap((void*)uiod, MAP_SIZE);
+}
+#else
+INLINE void uio_open() {
+}
+
+INLINE void uio_close() {
+}
 #endif
 
 // There are some places where we want a static size that's equal to the
@@ -266,6 +288,11 @@ void blake3_hash_many_neon(const uint8_t *const *inputs, size_t num_inputs,
 #endif
 
 #if defined(BLAKE3_USE_UIO)
+void blake3_compress_in_place_uio(uint32_t cv[8],
+                                     const uint8_t block[BLAKE3_BLOCK_LEN],
+                                     uint8_t block_len, uint64_t counter,
+                                     uint8_t flags);
+
 void blake3_hash_many_uio(const uint8_t *const *inputs, size_t num_inputs,
                            size_t blocks, const uint32_t key[8],
                            uint64_t counter, bool increment_counter,
