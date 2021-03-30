@@ -160,8 +160,7 @@ void blake3_compress_in_place(uint32_t cv[8],
 #endif
 #endif
 #if defined(BLAKE3_USE_UIO)
-  blake3_hash_many_uio(inputs, num_inputs, blocks, key, counter,
-                        increment_counter, flags, flags_start, flags_end, out);
+  blake3_compress_in_place_uio(cv, block, block_len, counter, flags);
   return;
 #endif
   blake3_compress_in_place_portable(cv, block, block_len, counter, flags);
