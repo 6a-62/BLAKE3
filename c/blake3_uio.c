@@ -6,31 +6,13 @@ void blake3_compress_in_place_uio(uint32_t cv[8],
                                        uint8_t block_len, uint64_t counter,
                                        uint8_t flags) {
   // Chain
-  uiod[0] = cv[0];
-  uiod[1] = cv[1];
-  uiod[2] = cv[2];
-  uiod[3] = cv[3];
-  uiod[4] = cv[4];
-  uiod[5] = cv[5];
-  uiod[6] = cv[6];
-  uiod[7] = cv[7];
+  for (int i=0; i<8; i++) {
+    uiod[i] = cv[i];
+  }
   // Message Block
-  uiod[8]  = load32(block + 4 * 0);
-  uiod[9]  = load32(block + 4 * 1);
-  uiod[10] = load32(block + 4 * 2);
-  uiod[11] = load32(block + 4 * 3);
-  uiod[12] = load32(block + 4 * 4);
-  uiod[13] = load32(block + 4 * 5);
-  uiod[14] = load32(block + 4 * 6);
-  uiod[15] = load32(block + 4 * 7);
-  uiod[16] = load32(block + 4 * 8);
-  uiod[17] = load32(block + 4 * 9);
-  uiod[18] = load32(block + 4 * 10);
-  uiod[19] = load32(block + 4 * 11);
-  uiod[20] = load32(block + 4 * 12);
-  uiod[21] = load32(block + 4 * 13);
-  uiod[22] = load32(block + 4 * 14);
-  uiod[23] = load32(block + 4 * 15);
+  for (int i=0; i<16; i++) {
+    uiod[i+8] = load32(block + 4 * i);
+  }
   // Block Counter
   uiod[24] = counter_low(counter);
   uiod[25] = counter_high(counter);
@@ -48,14 +30,9 @@ void blake3_compress_in_place_uio(uint32_t cv[8],
   }
   
   // Read Hash
-  cv[0] = uiod[29];
-  cv[1] = uiod[30];
-  cv[2] = uiod[31];
-  cv[3] = uiod[32];
-  cv[4] = uiod[33];
-  cv[5] = uiod[34];
-  cv[6] = uiod[35];
-  cv[7] = uiod[36];
+  for (int i=0; i<8; i++) {
+    cv[i] = uiod[29+i];
+  }
 }
 
 INLINE void hash_one_uio(const uint8_t *input, size_t blocks,
