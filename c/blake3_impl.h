@@ -8,8 +8,11 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #include "blake3.h"
+#include "dma-proxy.h"
 
 // internal flags
 enum blake3_flags {
@@ -55,25 +58,55 @@ enum blake3_flags {
 #define MAX_SIMD_DEGREE 1
 #endif
 
-#if defined(BLAKE3_USE_UIO)
-#define MAP_SIZE 0x1000
+// UIO Accelerator
+#define MAP_SIZE 0x4000
 volatile unsigned *uiod;
-INLINE void uio_open() {
+
+// DMA Accelerator
+int tx_fd;
+int rx_fd;
+struct channel_buffer *txd;
+struct channel_buffer *rxd;
+
+INLINE void accel_open() {
+#if defined(BLAKE3_USE_UIO)
+  printf("Mapping UIO...\n");
   // Open and map UIO device
-  int fd = open("/dev/uiod0", O_RDWR);
+  int fd = open("/dev/uio0", O_RDWR);
+  assert(fd > 0);
   uiod = (volatile unsigned *) mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-}
-
-INLINE void uio_close() {
-  munmap((void*)uiod, MAP_SIZE);
-}
-#else
-INLINE void uio_open() {
-}
-
-INLINE void uio_close() {
-}
+  assert(uiod != MAP_FAILED);
 #endif
+
+#if defined(BLAKE3_USE_DMA)
+  printf("Mapping DMA...\n");
+  // Open and map DMA channels
+  tx_fd = open("/dev/dma_proxy_tx", O_RDWR);
+  assert(tx_fd > 0);
+  rx_fd = open("/dev/dma_proxy_rx", O_RDWR);
+  assert(rx_fd > 0);
+  txd = (struct channel_buffer *) mmap(NULL, sizeof(struct channel_buffer) * TX_BUFFER_COUNT,
+									PROT_READ | PROT_WRITE, MAP_SHARED, tx_fd, 0);
+  rxd = (struct channel_buffer *) mmap(NULL, sizeof(struct channel_buffer) * RX_BUFFER_COUNT,
+									PROT_READ | PROT_WRITE, MAP_SHARED, rx_fd, 0);
+  assert(rxd != MAP_FAILED);
+  assert(txd != MAP_FAILED);
+#endif
+}
+
+INLINE void accel_close() {
+#if defined(BLAKE3_USE_UIO)
+  printf("Unmapping UIO...\n");
+  munmap((void*)uiod, MAP_SIZE);
+#endif
+#if defined(BLAKE3_USE_DMA)
+  printf("Unmapping DMA...\n");
+  munmap((void*)rxd, sizeof(struct channel_buffer));
+  munmap((void*)txd, sizeof(struct channel_buffer));
+  close(tx_fd);
+	close(rx_fd);
+#endif
+}
 
 // There are some places where we want a static size that's equal to the
 // MAX_SIMD_DEGREE, but also at least 2.
@@ -294,6 +327,19 @@ void blake3_compress_in_place_uio(uint32_t cv[8],
                                      uint8_t flags);
 
 void blake3_hash_many_uio(const uint8_t *const *inputs, size_t num_inputs,
+                           size_t blocks, const uint32_t key[8],
+                           uint64_t counter, bool increment_counter,
+                           uint8_t flags, uint8_t flags_start,
+                           uint8_t flags_end, uint8_t *out);
+#endif
+
+#if defined(BLAKE3_USE_DMA)
+void blake3_compress_in_place_dma(uint32_t cv[8],
+                                     const uint8_t block[BLAKE3_BLOCK_LEN],
+                                     uint8_t block_len, uint64_t counter,
+                                     uint8_t flags);
+
+void blake3_hash_many_dma(const uint8_t *const *inputs, size_t num_inputs,
                            size_t blocks, const uint32_t key[8],
                            uint64_t counter, bool increment_counter,
                            uint8_t flags, uint8_t flags_start,

@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 int main() {
-  uio_open();
   // Initialize the hasher.
   blake3_hasher hasher;
   blake3_hasher_init(&hasher);
@@ -25,6 +24,5 @@ int main() {
     printf("%02x", output[i]);
   }
   printf("\n");
-  uio_close();
   return 0;
 }

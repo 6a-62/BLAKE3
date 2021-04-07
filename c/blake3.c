@@ -355,6 +355,7 @@ INLINE void compress_subtree_to_parent_node(
 
 INLINE void hasher_init_base(blake3_hasher *self, const uint32_t key[8],
                              uint8_t flags) {
+  accel_open();
   memcpy(self->key, key, BLAKE3_KEY_LEN);
   chunk_state_init(&self->chunk, key, flags);
   self->cv_stack_len = 0;
@@ -558,6 +559,7 @@ void blake3_hasher_update(blake3_hasher *self, const void *input,
 void blake3_hasher_finalize(const blake3_hasher *self, uint8_t *out,
                             size_t out_len) {
   blake3_hasher_finalize_seek(self, 0, out, out_len);
+  accel_close();
 }
 
 void blake3_hasher_finalize_seek(const blake3_hasher *self, uint64_t seek,

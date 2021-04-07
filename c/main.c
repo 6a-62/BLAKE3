@@ -127,7 +127,6 @@ int main(int argc, char **argv) {
 
   const int mask = get_cpu_features();
   int feature = 0;
-  uio_open();
   do {
     fprintf(stderr, "Testing 0x%08X\n", feature);
     g_cpu_features = feature;
@@ -163,6 +162,5 @@ int main(int argc, char **argv) {
     feature = (feature - mask) & mask;
   } while (feature != 0);
   free(buf);
-  uio_close();
   return 0;
 }

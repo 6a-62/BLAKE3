@@ -159,6 +159,10 @@ void blake3_compress_in_place(uint32_t cv[8],
   }
 #endif
 #endif
+#if defined(BLAKE3_USE_DMA)
+  blake3_compress_in_place_dma(cv, block, block_len, counter, flags);
+  return;
+#endif
 #if defined(BLAKE3_USE_UIO)
   blake3_compress_in_place_uio(cv, block, block_len, counter, flags);
   return;
@@ -242,15 +246,21 @@ void blake3_hash_many(const uint8_t *const *inputs, size_t num_inputs,
   return;
 #endif
 
+#if defined(BLAKE3_USE_DMA)
+  blake3_hash_many_dma(inputs, num_inputs, blocks, key, counter,
+                        increment_counter, flags, flags_start, flags_end, out);
+  return;
+#endif
+
 #if defined(BLAKE3_USE_UIO)
   blake3_hash_many_uio(inputs, num_inputs, blocks, key, counter,
                         increment_counter, flags, flags_start, flags_end, out);
   return;
 #endif
 
-  blake3_hash_many_portable(inputs, num_inputs, blocks, key, counter,
-                            increment_counter, flags, flags_start, flags_end,
-                            out);
+blake3_hash_many_portable(inputs, num_inputs, blocks, key, counter,
+                          increment_counter, flags, flags_start, flags_end,
+                          out);
 }
 
 // The dynamically detected SIMD degree of the current platform.
